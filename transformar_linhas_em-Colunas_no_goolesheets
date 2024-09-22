@@ -1,0 +1,88 @@
+function transporPlanilhas() {
+  // Obter a planilha ativa
+  var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  
+  // Verificar se já existe uma planilha com o nome "Resultado"
+  var sheet = spreadsheet.getSheetByName('Resultado');
+  
+  // Se existir, excluir a planilha
+  if (sheet != null) {
+    spreadsheet.deleteSheet(sheet);
+  }
+  
+  // Criar nova planilha para armazenar os resultados
+  var novaPlanilha = spreadsheet.insertSheet('Resultado');
+  
+  // Obter todas as planilhas
+  var planilhas = spreadsheet.getSheets();
+  
+  // Variáveis para controle de posição (tanto de linhas quanto de colunas)
+  var colOffset = 1; // Primeira coluna será o nome das planilhas
+  var rowOffset = 2; // Começar na segunda linha, pois a primeira será para os rótulos das colunas
+
+  // Obter a primeira planilha e usar sua primeira coluna como rótulos das colunas
+  var primeiraPlanilha = planilhas[0];
+  var dadosPrimeiraPlanilha = primeiraPlanilha.getDataRange().getValues();
+  
+  // Definir a primeira coluna da primeira planilha como rótulos das colunas na nova planilha
+  var rotulos = dadosPrimeiraPlanilha.map(function(row) {
+    return row[0];  // Pegando apenas a primeira coluna
+  });
+  
+  // Adicionar os rótulos (nomes das colunas) na primeira linha da nova planilha
+  novaPlanilha.getRange(1, 2, 1, rotulos.length).setValues([rotulos]);
+  
+  // Adicionar o rótulo da coluna 1 como "Nome da Planilha"
+  novaPlanilha.getRange(1, 1).setValue('Nome da Planilha');
+
+  // Percorrer todas as planilhas para adicionar os dados
+  for (var i = 0; i < planilhas.length; i++) {
+    var planilhaAtual = planilhas[i];
+    var nomeDaPlanilha = planilhaAtual.getName(); // Obter o nome da planilha
+    var dados = planilhaAtual.getDataRange().getValues();
+    
+    // Para a primeira planilha, transpor os dados sem a primeira coluna
+    if (i === 0) {
+      var dadosTranspostos = transporDados(dados.map(function(row) {
+        return row.slice(1);  // Ignorar a primeira coluna
+      }));
+      
+      // Adicionar os dados transpostos à nova planilha
+      novaPlanilha.getRange(2, 2, dadosTranspostos.length, dadosTranspostos[0].length).setValues(dadosTranspostos);
+      
+      // Preencher a primeira coluna com o nome da planilha
+      var planilhaNomeColuna = Array(dadosTranspostos.length).fill([nomeDaPlanilha]);
+      novaPlanilha.getRange(2, 1, dadosTranspostos.length, 1).setValues(planilhaNomeColuna);
+      
+      // Atualizar o rowOffset para a próxima planilha
+      rowOffset += dadosTranspostos.length;
+    } else {
+      // Para as outras planilhas, ignorar a primeira coluna e adicionar seus dados transpostos
+      var dadosTranspostosOutras = transporDados(dados.map(function(row) {
+        return row.slice(1);  // Ignorar a primeira coluna
+      }));
+      
+      // Adicionar os dados transpostos à nova planilha, abaixo dos dados anteriores
+      novaPlanilha.getRange(rowOffset + 1, 2, dadosTranspostosOutras.length, dadosTranspostosOutras[0].length).setValues(dadosTranspostosOutras);
+      
+      // Preencher a primeira coluna com o nome da planilha
+      var planilhaNomeColunaOutras = Array(dadosTranspostosOutras.length).fill([nomeDaPlanilha]);
+      novaPlanilha.getRange(rowOffset + 1, 1, dadosTranspostosOutras.length, 1).setValues(planilhaNomeColunaOutras);
+      
+      // Atualizar o rowOffset para a próxima planilha
+      rowOffset += dadosTranspostosOutras.length;
+    }
+  }
+}
+
+// Função para transpor os dados (colunas viram linhas)
+function transporDados(dados) {
+  var dadosTranspostos = [];
+  for (var i = 0; i < dados[0].length; i++) {
+    dadosTranspostos[i] = [];
+    for (var j = 0; j < dados.length; j++) {
+      dadosTranspostos[i][j] = dados[j][i];
+    }
+  }
+  return dadosTranspostos;
+}
